@@ -79,7 +79,11 @@ main:
 	addi $sp, $sp, 4
 	subi $sp, $sp, 4
 	sw $t0, 0($sp)
+	subi $sp, $sp, 4
+	sw $t0, 0($sp)
 	jal sum
+	lw $t0, 0($sp)
+	addi $sp, $sp, 4
 	addi $sp, $sp, 8
 	subi $sp, $sp, 4
 	sw $t0, 0($sp)

@@ -326,14 +326,14 @@ let tr_function fdef =
          List.fold_left
            (fun code i -> push (regis i) @@ code)
            nop
-           (List.init (List.length params) (fun x -> x))
+           (List.init ((List.length params) - 1) (fun x -> x))
        in
        (* Restauration des registres t0-t7 depuis la pile après l'appel de fonction *)
        let restore_registers =
          List.fold_left
            (fun code i -> pop (regis i) @@ code)
            nop
-           (List.init (List.length params) (fun x -> x))
+           (List.init ((List.length params) - 1) (fun x -> x))
        in
        (* Evaluate the arguments and pass them on the stack. *)
        let params_code =

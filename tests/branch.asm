@@ -15,13 +15,7 @@ main:
 	sw $ra, 0($sp)
 	addi $fp, $sp, 4
 	addi $sp, $sp, 0
-	li $t0, 2
-	subi $sp, $sp, 4
-	sw $t0, 0($sp)
 	li $t0, 1
-	lw $t1, 0($sp)
-	addi $sp, $sp, 4
-	slt $t0, $t0, $t1
 	bnez $t0, __main_0
 	li $t0, 99
 	move $a0, $t0
@@ -29,13 +23,7 @@ main:
 	syscall
 	b __main_1
 __main_0:
-	li $t0, 3
-	subi $sp, $sp, 4
-	sw $t0, 0($sp)
-	li $t0, 4
-	lw $t1, 0($sp)
-	addi $sp, $sp, 4
-	slt $t0, $t0, $t1
+	li $t0, 0
 	bnez $t0, __main_2
 	li $t0, 98
 	move $a0, $t0

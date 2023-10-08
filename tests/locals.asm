@@ -51,22 +51,14 @@ main:
 	lw $t0, 0($t0)
 	subi $sp, $sp, 4
 	sw $t0, 0($sp)
-	subi $sp, $sp, 4
-	sw $t0, 0($sp)
 	jal double
-	lw $t0, 0($sp)
-	addi $sp, $sp, 4
 	addi $sp, $sp, 4
 	subi $sp, $sp, 4
 	sw $t0, 0($sp)
 	li $t0, 1
 	subi $sp, $sp, 4
 	sw $t0, 0($sp)
-	subi $sp, $sp, 4
-	sw $t0, 0($sp)
 	jal double
-	lw $t0, 0($sp)
-	addi $sp, $sp, 4
 	addi $sp, $sp, 4
 	subi $sp, $sp, 4
 	sw $t0, 0($sp)

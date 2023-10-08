@@ -35,8 +35,8 @@ let type_program (p: unit program): typ program =
   (* typing a function definition *)
   let type_fdef fdef =
     (* add local elements to the environments *)
-    let tenv = add2env fdef.locals tenv in
     let tenv = add2env fdef.params tenv in
+    let tenv = add2env fdef.locals tenv in
 
     (* note: nested definitions ensure that all environments are known to the
        inner functions, without making them explicit arguments *)
