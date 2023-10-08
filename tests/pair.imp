@@ -1,0 +1,19 @@
+
+function main() {
+  var p;
+  var q;
+  
+  p = alloc((1 + (4 * 2)));
+  **alloc((p + (4 * 0))) = 2;
+  **alloc((p + (4 * 1))) = 48;
+  putchar(*alloc((p + (4 * 1))));
+  q = p;
+  **alloc((q + (4 * 1))) = 49;
+  putchar(*alloc((p + (4 * 1))));
+  p = alloc((2 + (4 * 2)));
+  **alloc((p + (4 * 1))) = 50;
+  putchar(*alloc((p + (4 * 1))));
+  putchar(*alloc((q + (4 * 1))));
+}
+
+
