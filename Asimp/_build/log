@@ -1,9 +1,9 @@
 # dune build
 # OCAMLPARAM: unset
 # Shared cache: disabled
-# Workspace root: /mnt/c/Users/Rui/Documents/Compiler-Project/Asimp
+# Workspace root: /mnt/c/Users/Rui/Documents/compiler-project/Asimp
 # Auto-detected concurrency: 4
-$ /usr/bin/ocamlc.opt -config > /tmp/dune_8e631a_output
+$ /usr/bin/ocamlc.opt -config > /tmp/dune_49adb3_output
 # Dune context:
 #  { name = "default"
 #  ; kind = "default"
@@ -25,15 +25,15 @@ $ /usr/bin/ocamlc.opt -config > /tmp/dune_8e631a_output
 #        { "DUNE_OCAML_HARDCODED" : "/home/ruicesista/.opam/default/lib"
 #        ; "DUNE_OCAML_STDLIB" : "/usr/lib/ocaml"
 #        ; "DUNE_SOURCEROOT" :
-#            "/mnt/c/Users/Rui/Documents/Compiler-Project/Asimp"
+#            "/mnt/c/Users/Rui/Documents/compiler-project/Asimp"
 #        ; "INSIDE_DUNE" :
-#            "/mnt/c/Users/Rui/Documents/Compiler-Project/Asimp/_build/default"
+#            "/mnt/c/Users/Rui/Documents/compiler-project/Asimp/_build/default"
 #        ; "OCAMLFIND_IGNORE_DUPS_IN" :
-#            "/mnt/c/Users/Rui/Documents/Compiler-Project/Asimp/_build/install/default/lib"
+#            "/mnt/c/Users/Rui/Documents/compiler-project/Asimp/_build/install/default/lib"
 #        ; "OCAMLPATH" :
-#            "/mnt/c/Users/Rui/Documents/Compiler-Project/Asimp/_build/install/default/lib"
+#            "/mnt/c/Users/Rui/Documents/compiler-project/Asimp/_build/install/default/lib"
 #        ; "OCAMLTOP_INCLUDE_PATH" :
-#            "/mnt/c/Users/Rui/Documents/Compiler-Project/Asimp/_build/install/default/lib/toplevel"
+#            "/mnt/c/Users/Rui/Documents/compiler-project/Asimp/_build/install/default/lib/toplevel"
 #        ; "OCAML_COLOR" : "always"
 #        ; "OPAMCOLOR" : "always"
 #        }
@@ -110,10 +110,3 @@ $ /usr/bin/ocamlc.opt -config > /tmp/dune_8e631a_output
 #      ; windows_unicode = false
 #      }
 #  }
-$ (cd _build/default && /usr/bin/ocamldep.opt -modules -impl imp2mips.ml) > _build/default/.asimpc.eobjs/imp2mips.ml.d
-$ (cd _build/default && /usr/bin/ocamlc.opt -g -bin-annot -I .asimpc.eobjs/byte -no-alias-deps -opaque -open Dune__exe -o .asimpc.eobjs/byte/dune__exe__Imp2mips.cmo -c -impl imp2mips.ml)
-$ (cd _build/default && /usr/bin/ocamlc.opt -g -bin-annot -I .asimpc.eobjs/byte -no-alias-deps -opaque -open Dune__exe -o .asimpc.eobjs/byte/dune__exe__Asimpc.cmo -c -impl asimpc.ml)
-$ (cd _build/default && /usr/bin/ocamlopt.opt -g -I .asimpc.eobjs/byte -I .asimpc.eobjs/native -intf-suffix .ml -no-alias-deps -opaque -open Dune__exe -o .asimpc.eobjs/native/dune__exe__Imp2mips.cmx -c -impl imp2mips.ml)
-$ (cd _build/default && /usr/bin/ocamlopt.opt -g -I .asimpc.eobjs/byte -I .asimpc.eobjs/native -intf-suffix .ml -no-alias-deps -opaque -open Dune__exe -o .asimpc.eobjs/native/dune__exe__Asimpc.cmx -c -impl asimpc.ml)
-$ (cd _build/default && /usr/bin/ocamlopt.opt -g -o asimpc.exe .asimpc.eobjs/native/dune__exe.cmx .asimpc.eobjs/native/dune__exe__Asimp.cmx .asimpc.eobjs/native/dune__exe__Imp.cmx .asimpc.eobjs/native/dune__exe__Asimp2imp.cmx .asimpc.eobjs/native/dune__exe__Asimpparser.cmx .asimpc.eobjs/native/dune__exe__Asimplexer.cmx .asimpc.eobjs/native/dune__exe__Asimptyper.cmx .asimpc.eobjs/native/dune__exe__Mips.cmx .asimpc.eobjs/native/dune__exe__Imp2mips.cmx .asimpc.eobjs/native/dune__exe__Imppp.cmx .asimpc.eobjs/native/dune__exe__Asimpc.cmx)
-# Promoting "_build/default/asimpc.exe" to "asimpc.exe"

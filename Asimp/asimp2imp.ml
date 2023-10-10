@@ -7,10 +7,6 @@ let tr_op: Asimp.binop -> Imp.binop = function
 (* main translation function *)
 let translate_program (p: Asimp.typ Asimp.program) =
 
-  let new_ptr =
-    let cpt = ref 0 in
-    fun () -> incr cpt; !cpt
-  in
   (* translation of an expression *)
   let rec tr_expr (te: Asimp.typ Asimp.expression): Imp.expression = match te.expr with
     | Cst n  -> Cst n
@@ -20,7 +16,7 @@ let translate_program (p: Asimp.typ Asimp.program) =
     | Call(f, l) -> Call(f, List.map tr_expr l)
     | Read m -> tr_mem m
     | NewTab(t, e) ->  let size = tr_expr e in 
-    Alloc( Binop(Add, Cst (new_ptr()), Binop(Mul, Cst 4, size)))
+    Alloc( Binop(Mul, Cst 4, size))
     | New s -> let pstr = p.structs in      
       let s_struct = 
         let rec aux (st:string) (pst:Asimp.struct_def list) = match pst with
@@ -30,11 +26,11 @@ let translate_program (p: Asimp.typ Asimp.program) =
         in
         aux s pstr
       in
-      Alloc( Binop(Add, Cst (new_ptr()), Binop(Mul, Cst 4, Cst (List.length s_struct.fields))))
+      Alloc(  Binop(Mul, Cst 4, Cst (List.length s_struct.fields)))
   and tr_mem m = match m with
   | Arr(e1, e2) -> let tr_e1 = tr_expr e1 in
       let tr_e2 = tr_expr e2 in
-      Deref( Alloc( Binop(Add, tr_e1, Binop(Mul, Cst 4, tr_e2)))  )
+      Deref( Binop(Add, tr_e1, Binop(Mul, Cst 4, tr_e2))  )
   | Str(e, s) ->
       let pstr = p.structs in 
       let str_e = (match e.annot with
@@ -51,7 +47,7 @@ let translate_program (p: Asimp.typ Asimp.program) =
         (** The List.find is to search the correct structure in the program *)
         aux s str_s.fields 0
       in 
-      Deref( Alloc( Binop(Add, tr_expr e, Binop(Mul, Cst 4, Cst place)))  )
+      Deref(  Binop(Add, tr_expr e, Binop(Mul, Cst 4, Cst place))  )
   in
 
   (* translation of instructions *)

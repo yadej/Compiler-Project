@@ -52,13 +52,12 @@ let type_program (p: unit program): typ program =
          let func = Env.find f fenv in
          mk_expr func.return (Call(f, List.map type_expr l))
       | New s -> mk_expr (TStruct (Env.find s senv).name) (New s)
-      | NewTab(t, s) -> Printf.printf "Je suis un Tableau";
-         mk_expr t (NewTab(t,type_expr s))
+      | NewTab(t, s) ->
+         mk_expr (TArray t) (NewTab(t,type_expr s))
       | Read m -> type_mem m
     and type_mem m = match m with
     | Arr(e1, e2) ->  let typ_e1 = type_expr e1 in
         let typ_e2 = type_expr e2 in
-        Printf.printf "Je suis un Int";
         (match typ_e1.annot with
         | TArray t -> mk_expr t ( Read (Arr(typ_e1, check typ_e2 TInt) ))
         | _ -> failwith "Should be an array"
