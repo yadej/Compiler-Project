@@ -29,7 +29,7 @@
 %nonassoc LBRACKET DOT
 
 %start program
-%type <Objlng.program> program
+%type <unit Objlng.program> program
 
 %%
 
@@ -113,17 +113,17 @@ mem_access:
 ;
 
 expression:
-| n=CST { Cst n }
-| b=BOOL { Bool b }
-| id=IDENT { Var id }
+| n=CST { mk_expr () (Cst n) }
+| b=BOOL { mk_expr () (Bool b) }
+| id=IDENT { mk_expr () (Var id) }
 | LPAR e=expression RPAR { e }
-| e1=expression op=binop e2=expression { Binop(op, e1, e2) }
-| f=IDENT LPAR params=separated_list(COMMA, expression) RPAR { Call(f, params) }
-| e=expression DOT f=IDENT LPAR params=separated_list(COMMA, expression) RPAR { MCall(e, f, params) }
-| NEW id=IDENT LPAR params=separated_list(COMMA, expression) RPAR { New(id, params) }
-| NEW LBRACKET ty=typ COMMA e=expression RBRACKET { NewTab(ty, e) }
-| m=mem_access { Read m }
-| THIS { This }
+| e1=expression op=binop e2=expression { mk_expr () (Binop(op, e1, e2)) }
+| f=IDENT LPAR params=separated_list(COMMA, expression) RPAR { mk_expr () (Call(f, params)) }
+| e=expression DOT f=IDENT LPAR params=separated_list(COMMA, expression) RPAR { mk_expr () (MCall(e, f, params)) }
+| NEW id=IDENT LPAR params=separated_list(COMMA, expression) RPAR { mk_expr () (New(id, params)) }
+| NEW LBRACKET ty=typ COMMA e=expression RBRACKET { mk_expr () (NewTab(ty, e)) }
+| m=mem_access { mk_expr () (Read m) }
+| THIS { mk_expr () (This) }
 ;
 
 %inline binop:

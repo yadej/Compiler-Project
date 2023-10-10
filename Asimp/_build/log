@@ -3,7 +3,7 @@
 # Shared cache: disabled
 # Workspace root: /mnt/c/Users/Rui/Documents/compiler-project/Asimp
 # Auto-detected concurrency: 4
-$ /usr/bin/ocamlc.opt -config > /tmp/dune_49adb3_output
+$ /usr/bin/ocamlc.opt -config > /tmp/dune_f670ff_output
 # Dune context:
 #  { name = "default"
 #  ; kind = "default"
@@ -110,3 +110,8 @@ $ /usr/bin/ocamlc.opt -config > /tmp/dune_49adb3_output
 #      ; windows_unicode = false
 #      }
 #  }
+$ (cd _build/default && /usr/bin/ocamldep.opt -modules -impl asimptyper.ml) > _build/default/.asimpc.eobjs/asimptyper.ml.d
+$ (cd _build/default && /usr/bin/ocamlc.opt -g -bin-annot -I .asimpc.eobjs/byte -no-alias-deps -opaque -open Dune__exe -o .asimpc.eobjs/byte/dune__exe__Asimptyper.cmo -c -impl asimptyper.ml)
+$ (cd _build/default && /usr/bin/ocamlopt.opt -g -I .asimpc.eobjs/byte -I .asimpc.eobjs/native -intf-suffix .ml -no-alias-deps -opaque -open Dune__exe -o .asimpc.eobjs/native/dune__exe__Asimptyper.cmx -c -impl asimptyper.ml)
+$ (cd _build/default && /usr/bin/ocamlopt.opt -g -o asimpc.exe .asimpc.eobjs/native/dune__exe.cmx .asimpc.eobjs/native/dune__exe__Asimp.cmx .asimpc.eobjs/native/dune__exe__Imp.cmx .asimpc.eobjs/native/dune__exe__Asimp2imp.cmx .asimpc.eobjs/native/dune__exe__Asimpparser.cmx .asimpc.eobjs/native/dune__exe__Asimplexer.cmx .asimpc.eobjs/native/dune__exe__Asimptyper.cmx .asimpc.eobjs/native/dune__exe__Mips.cmx .asimpc.eobjs/native/dune__exe__Imp2mips.cmx .asimpc.eobjs/native/dune__exe__Imppp.cmx .asimpc.eobjs/native/dune__exe__Asimpc.cmx)
+# Promoting "_build/default/asimpc.exe" to "asimpc.exe"

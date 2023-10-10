@@ -33,7 +33,7 @@ let type_program (p: unit program): typ program =
   let senv = add2env (List.map (fun s -> s.name, s) p.structs) Env.empty in
 
   (* typing a function definition *)
-  let type_fdef fdef =
+  let type_fdef (fdef: unit function_def) =
     (* add local elements to the environments *)
     let tenv = add2env fdef.params tenv in
     let tenv = add2env fdef.locals tenv in
