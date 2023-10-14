@@ -21,4 +21,5 @@ let () =
   Mips.print_program outf asm;
   pp_print_flush outf ();
   close_out out;
+  
   exit 0

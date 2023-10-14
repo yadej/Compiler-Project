@@ -7,7 +7,9 @@ let () =
   let prog = Objlngparser.program Objlnglexer.token lb in
   close_in c;
   let tprog = Objlngtyper.type_program prog in
+  Printf.printf "Passer le typer \n";
   let imp = Objlng2imp.translate_program tprog in
+  Printf.printf "Passer le translator \n";
   let imp_output_file = (Filename.chop_suffix file ".obj") ^ ".imp" in
   let imp_out = open_out imp_output_file in
   let imp_outf = formatter_of_out_channel imp_out in
@@ -21,4 +23,5 @@ let () =
   Mips.print_program outf asm;
   pp_print_flush outf ();
   close_out out;
+  
   exit 0

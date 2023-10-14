@@ -33,7 +33,8 @@ let type_program (p: unit program): typ program =
   let senv = add2env (List.map (fun s -> s.name, s) p.classes) Env.empty in
 
   (* typing a function definition *)
-  let type_fdef fdef =
+  let type_fdef (curr_class, tenv, fenv: string option * typ Env.t * unit function_def Env.t) 
+  (fdef: unit function_def): typ function_def =
     (* add local elements to the environments *)
     let tenv = add2env fdef.params tenv in
     let tenv = add2env fdef.locals tenv in
@@ -44,17 +45,30 @@ let type_program (p: unit program): typ program =
     let rec type_expr (e: unit expression): typ expression = match e.expr with
       | Cst n -> mk_expr TInt (Cst n)
       | Bool b -> mk_expr TBool (Bool b)
-      | Var x ->( try 
+      | Var x ->(try 
          mk_expr (Env.find x tenv) (Var x) with Not_found -> Printf.printf "Cherche %s\n" x;failwith "Should be a variable" )
       | Binop (op, e1, e2) -> let nop = check_binop op in
          mk_expr (nop) (Binop(op, type_expr e1, type_expr e2 ))
       | Call(f, l) ->
-         let func = Env.find f fenv in
+        let func = (try Env.find f fenv  with Not_found -> Printf.printf "Cherche la fonction %s \n" f;  failwith "") in
          mk_expr func.return (Call(f, List.map type_expr l))
+      | MCall(e, f, l) ->
+        let typ_e = type_expr e in
+        let class_fun: unit class_def = (match typ_e.annot with
+          | TClass(s) ->
+          (try Env.find s senv  with Not_found -> Printf.printf "Cherche la method %s de la classe %ss\n" f s;  failwith "") 
+          | _ -> failwith "Devrait chercher une classe")
+          in
+        let func = List.find (fun (x: unit function_def) -> x.name = f) class_fun.methods in
+        mk_expr func.return (MCall(typ_e ,f, List.map type_expr l))
       | New (s, l) -> mk_expr (TClass (Env.find s senv).name) (New (s, List.map type_expr l))
       | NewTab(t, s) ->
          mk_expr (TArray t) (NewTab(t,type_expr s))
       | Read m -> type_mem m
+      | This -> (match curr_class with
+        | Some s -> mk_expr (TClass s) This
+        | None -> failwith "Should be in a class"
+        )
     and type_mem m = match m with
     | Arr(e1, e2) ->  let typ_e1 = type_expr e1 in
         let typ_e2 = type_expr e2 in
@@ -85,4 +99,11 @@ let type_program (p: unit program): typ program =
     in
     { fdef with code = type_seq fdef.code }
   in
-  {p with functions = List.map type_fdef p.functions}
+  let type_classes( fcla: unit class_def): typ class_def =
+    let tenv = add2env fcla.fields tenv in
+    let fenv = add2env (List.map (fun (f: unit function_def) -> f.name, f) fcla.methods) fenv in
+    let listSname = List.init (List.length fcla.methods) (fun (x: int) -> Some fcla.name, tenv, fenv) in
+    {fcla with methods = List.map2 type_fdef listSname fcla.methods}
+  in
+  let listSname = List.init (List.length p.functions) (fun (x: int) -> None, tenv, fenv) in 
+  {p with functions = List.map2 type_fdef listSname p.functions; classes = List.map type_classes p.classes}

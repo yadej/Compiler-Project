@@ -1,170 +1,3 @@
-(**
-   Simple translation from IMP to MIPS.
-
-   Summary of MIPS architecture and assembly language.
-
-
-   32-bits architecture comprising:
-   - an arithmetic and logical unit
-   - 32 registers
-     * general purpose: $t0-$t9, $s0-$s7, $a0-$a3, $v0-$v1
-     * special purpose: $ra, $sp, $fp, $gp, $zero
-     (+3 reserved)
-   - randomly addressable memory, containing code and data
-
-
-   A MIPS program contains two parts :
-   - instructions, introduced by the directive
-
-       .text
-
-   - data, introduced by the directive
-
-       .data
-
-   The data part contains statically allocated data, for instance the
-   global variables of a program. Each piece of data is given a label
-   that will be used for accessing the data.
-
-
-
-   *** Arithmetic ***
-
-   Arithmetic instructions in "three addresses" format, that apply to 
-   values stored in registers, and also put the result in a register.
-   Three addresses format:
-
-     add  $r1, $r2, $r3
-
-   means  $r1 <- $r2 + $r3 
-   where $r1 is the register where the result is to be stored, and $r2 and
-   $r3 are the registers containing the value to be summed.
-   
-   Many instructions in this format: 
-   - arithmetic: add, sub, mul, div, rem, sll, srl
-   - logic: and, or
-   - comparisons: seq, sne, slt, sle, sgt, sge
-   Some unary operations ask for only one operand:
-   - not, neg, move
-
-   A few arithmetic instructions take a number as second operand.
-   For instance:
-
-     addi  $r1, $r2, i
-
-   for  $r1 <- $r2 + i
-
-
-   Loading a value in a register:
-
-     li  $r, i
-
-   for  $r <- i
-
-
-   *** Memory ***
-
-   A memory address is identified by a base address contained in a
-   register [$r], and an offset [o] relative to the base address. The
-   offset is given directly as a number.
-   Notation: o($r).
-   Addresses are given in bytes. A 32-bits piece of data occupies 4 bytes.
-
-   Read access
-
-     lw  $r1, o($r2)
-
-   for  $r1 <- *($r2+o)
-   which means "$r1 takes the value stored at address $r2+o".
-
-   Write access
-
-     sw  $r1, o($r2)
-
-   for  *($r2+o) <- $r1
-   which means "store at address $r2+o the value of register $r1".
-
-
-   Statically allocated data are, as everything else, stored in memory. 
-   Retrieve the address associated to a label [lab] of statically allocated
-   data with
-   
-     la  $r1, lab
-
-
-   *** Branching instructions ***
-
-   The running program is stored in memory: each instruction has an address.
-   Special register [pc] contains the address of the next instruction.
-
-   In most cases, execution of a given instruction is followed by the execution
-   of its immediate successor in memory, which corresponds to
-     pc <- pc + 4
-   Jump or branch instructions drive execution towards other parts of the
-   program, identified by one the following means:
-   - a label written at some place in the assembly program,
-   - an address that has been computed and stored in a register.
-
-   Unconditional jumps with target given by a label 
-   (two versions are subtly different, but we will ignore the difference).
-     
-     j  lab
-     b  lab
-
-   Unconditional jump with target address given by a register 
-
-     jr  $r
-
-   Two variants used for function calls, which store the value [pc+4] in the
-   special purpose register $ra. This stored address identifies the instruction
-   where execution should resume once the call is completed.
-
-     jal   lab
-     jalr  $r
-
-
-   Conditional jumps to a label, depending on the result of a test.
-   Example: jumps to the instruction with label [lab] si the values in 
-   registers $r1 and $r2 are equal.
-
-     beq  $r1, $r2, lab
-
-   Available binary tests:
-   - beq, bne, bgt, bge, blt, ble
-
-   Particular cases with only one operand, equivalant to the previous 
-   instructions with $r2=0
-
-     beqz  $r1, lab
-
-   Available tests-to-zero:
-   - beqz, bnez, bgtz, bgez, bltz, blez
-
-
-   *** System calls ***
-
-   For this course we do not use actual MIPS hardware but a simulator.
-   This simulator includes a few special operations that mimick some services
-   that would otherwise be offered by the operating system, or a low-level
-   library like the libc. These operations are triggered by the additional
-   instruction
-     
-     syscall
-
-   which is not part of the actual assembly language.
-   Each service has a numeric code, that has to be put in register $v0.
-   If an argument is needed, it is put in register $a0.
-
-   Some services:
-   - code 1: prints the integer contained in register $a0
-   - code 10: halts the program
-   - code 11: prints the character whose ASCII code is given by $a0
- *)
-
-(**
-   Module Imp defines the abstract syntax for the source language.
-   Module Mips defines caml functions for generating MIPS instructions.
- *)
 open Imp
 open Mips
 
@@ -212,63 +45,17 @@ let pop  reg =
     )
 | Var x -> Var x
 | Call(s, l) -> Call(s, List.map simplify_expr l)
+| DCall(e, l) -> DCall(simplify_expr e, List.map simplify_expr l)
 | Alloc e -> Alloc(simplify_expr e)
 | Deref e -> Deref(simplify_expr e)
 
 
 let tr_function fdef =
-  (**
-     Initialization of a table for accessing local variables and function
-     parameters. These data are laid around a base address given by the
-     special purpose register $fp. This information is called the
-     activation frame for the call. It is pictured below.
-     
-       +------+
-       |  aN  |   <- last argument, address  $fp + 4N
-       +------+
-       |      |
-       |  ..  |
-       |      |
-       +------+
-       |  a2  |   <- second argument, address $fp + 8
-       +------+
-       |  a1  |   <- first argument, address $fp + 4
-       +------+
-       |      |   <- base address given by $fp
-       +------+
-       |      |
-       +------+
-       |  x1  |   <- first local variable, address $fp - 8
-       +------+
-       |  x2  |   <- second local variable, address $fp - 12
-       +------+
-       |      |
-       |  ..  |
-       |      |
-       +------+
-       |  xK  |   <- last local variable, address $fp - 4(K+1)
-       +------+
-
-     The table defined below associates each local variable or parameter
-     name the offset at which it can be found relative to the base
-     address $fp.
-   *)
+  
   let env = Hashtbl.create 16 in
   List.iteri (fun k id -> Hashtbl.add env id (4*(k+1))) fdef.params;
   List.iteri (fun k id -> Hashtbl.add env id (-4*(k+2))) fdef.locals;
-  (**
-     In the activation frame, addresses $fp and $fp-4 are used for two
-     special information that the source program cannot access.
-     - At the base address $fp, we store the base address of the activation
-       frame of the caller. This implicitly creates a linked list of the
-       activation frames of all the currently active calls, that starts
-       with the most recent.
-     - At address $fp-4, we store the return address of the call, that is
-       the address in the code of the caller at which the execution will 
-       resume after the call. This is the address that is put in $ra when
-       the call is performed. It is stored in the activation frame so as
-       not to be destroyed by the next call.
-   *)
+
   
    let regis i = List.nth [t0; t1; t2; t3; t4; t5; t6; t7;] i in
   
@@ -344,36 +131,35 @@ let tr_function fdef =
        params_code (* STEP 1 *)
        (* optionnally: save caller-saved registers *)
        @@ save_registers
-       (* Here, the top of the stack looks like this
-
-            +------+
-            |  aN  |
-            +------+
-            |      |
-            |  ..  |
-            |      |
-            +------+
-            |  a2  |
-            +------+
-            |  a1  |  <-  address given by $sp
-            +------+
-            |      |  (free)
-
-          Reminder: the "top" of the stack is its smallest address.
-          This top of stack is the first part of the activation frame.
-          The second part, containing local variables, will be installed by
-          the function itself.  *) 
-       (* Function call, with return address stored in register $ra. *)
        @@ jal f
-       (* After the call, execution comes back at this point of the code, and
-          register $t0 contains the returned value. *)
-       (* End of the call protocol: remove the arguments from the top of the
-          stack. Incrementing $sp is enough (the values are not destroyed, but
-          are not reachable anymore). *)
-       (* optionnally: restore caller-saved registers *)
        @@ restore_registers
-       @@ addi sp sp (4 * List.length params) (* STEP 4 *)
-
+       @@ addi sp sp (4 * List.length params) 
+    | DCall(e, params) ->
+      let save_registers =
+         List.fold_left
+           (fun code i -> push (regis i) @@ code)
+           nop
+           (List.init ((List.length params) - 1) (fun x -> x))
+       in
+       (* Restauration des registres t0-t7 depuis la pile après l'appel de fonction *)
+       let restore_registers =
+         List.fold_left
+           (fun code i -> pop (regis i) @@ code)
+           nop
+           (List.init ((List.length params) - 1) (fun x -> x))
+       in
+       (* Evaluate the arguments and pass them on the stack. *)
+       let params_code =
+         List.fold_right
+           (fun e code ->code @@ tr_expr i e @@ push (regis i))
+           params nop
+       in
+       params_code (* STEP 1 *)
+       (* optionnally: save caller-saved registers *)
+       @@ save_registers
+       @@ tr_expr i e
+       @@ restore_registers
+       @@ addi sp sp (4 * List.length params) 
     | Deref e ->
        tr_expr i e  (* pointer in t0 *)
        @@ lw (regis i) 0(regis i)

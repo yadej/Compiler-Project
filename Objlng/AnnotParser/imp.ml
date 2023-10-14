@@ -23,6 +23,8 @@ type expression =
   | Binop of binop * expression * expression
   (* Function call, with a function name and a list of parameters *)
   | Call  of string * expression list
+  (* Method call, with the Method place and a list of parameters*)
+  | DCall of expression * expression list
   (* Dereference a pointer *)
   | Deref of expression   (*   *e   *)
   (* Allocate some memory *)

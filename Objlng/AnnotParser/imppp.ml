@@ -13,6 +13,7 @@ let rec print_expr fmt = function
   | Binop(op, e1, e2) -> 
      fprintf fmt "(@[%a %s@ %a@])" print_expr e1 (op2string op) print_expr e2
   | Call(f, args) -> fprintf fmt "%s(@[%a@])" f print_args args
+  | DCall(m, args) -> fprintf fmt "%a(@[%a@])" print_expr m print_args args
   | Deref e -> fprintf fmt "*@[%a@]" print_expr e
   | Alloc e -> fprintf fmt "alloc(@[%a@])" print_expr e
 and print_args fmt = function

@@ -14,6 +14,24 @@ let translate_program (p: Objlng.typ Objlng.program) =
     | Var x  -> Var x
     | Binop(op, e1, e2) -> Binop(tr_op op, tr_expr e1, tr_expr e2)
     | Call(f, l) -> Call(f, List.map tr_expr l)
+    | MCall(e, f, l) -> 
+      let tr_obj = tr_expr e in
+      let tr_params = List.map tr_expr l in
+      (* Compute the pointer to the method using the class descriptor offset (8 bytes) *)
+      let place = (match e.annot with
+      | TClass c ->
+        let c_cla = List.find (fun (x: 'a Objlng.class_def) -> x.name = c) p.classes in
+        let rec f_place (method_list: 'a Objlng.function_def list) counter = (match method_list with
+        | x::l when x.name = f -> counter
+        | x::l -> f_place l (counter + 1)
+        | _  -> Printf.printf "Method %s not in the Classe %s \n " f c; failwith ""
+        ) in
+        (List.length c_cla.fields) + (f_place c_cla.methods 0) 
+      | _ -> failwith "Method Call when the call is not a class"
+        ) in
+      let method_ptr = Imp.Deref(Binop(Add, Deref(tr_obj), Cst (place * 4))) in
+      (* Create the dynamic method call expression in the IMP abstract syntax *)
+      DCall(method_ptr, tr_obj :: tr_params)
     | Read m -> Deref(tr_mem m)
     | NewTab(t, e) ->  let size = tr_expr e in 
     Alloc( Binop(Mul, Cst 4, size))
@@ -28,7 +46,7 @@ let translate_program (p: Objlng.typ Objlng.program) =
       in
       let sum = (List.length s_classes.fields) + (List.length s_classes.methods) in
       Alloc(  Binop(Mul, Cst 4, Cst sum))
-    | _ -> failwith "Not Implemented"
+    | This -> Cst 0
   and tr_mem m = match m with
   | Arr(e1, e2) -> let tr_e1 = tr_expr e1 in
       let tr_e2 = tr_expr e2 in
