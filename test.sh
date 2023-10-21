@@ -10,3 +10,6 @@ if ls $DOSSIER_TESTS 1> /dev/null 2>&1; then
 else
     echo "Aucun fichier .simp trouvé dans le dossier 'tests'."
 fi
+cd Asimp
+dune clean
+cd ..

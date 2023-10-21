@@ -16,6 +16,7 @@ let rec print_expr fmt = function
   | DCall(m, args) -> fprintf fmt "%a(@[%a@])" print_expr m print_args args
   | Deref e -> fprintf fmt "*@[%a@]" print_expr e
   | Alloc e -> fprintf fmt "alloc(@[%a@])" print_expr e
+  | Addr x -> fprintf fmt "&%s" x
 and print_args fmt = function
   | [] -> fprintf fmt ""
   | [a] -> fprintf fmt "%a" print_expr a
@@ -31,6 +32,7 @@ let rec print_instr fmt = function
   | Return e -> fprintf fmt "return(@[%a@]);" print_expr e
   | Expr e -> fprintf fmt "@[%a@];" print_expr e
   | Write(e1, e2) -> fprintf fmt "@[*%a =@ @[%a@];@]" print_expr e1 print_expr e2
+  | Seq l -> fprintf fmt "%a" print_seq l 
 and print_seq fmt = function
   | [] -> fprintf fmt ""
   | [i] -> fprintf fmt "%a" print_instr i

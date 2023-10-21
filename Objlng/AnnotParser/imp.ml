@@ -29,13 +29,8 @@ type expression =
   | Deref of expression   (*   *e   *)
   (* Allocate some memory *)
   | Alloc of expression
-(**
-   An expression:
-     (1 + x) * f(3, true)
- *)
-let e = Binop(Mul,
-              Binop(Add, Cst 1, Var "x"),
-              Call("f", [Cst 3; Bool true]))
+  (* Adress of Var *)
+  | Addr of string
 
 let array_offset t i = Binop(Add, t, Binop(Mul, Cst 4, i))
 let array_access t i = Deref(array_offset t i)
@@ -58,21 +53,9 @@ type instruction =
   | Expr    of expression
   (* writing in memory *)
   | Write   of expression * expression (*   *e1 = e2;   *)
+  | Seq of sequence
 (* Instruction sequence *)
 and sequence = instruction list
-(**
-   An instruction:
-     while (c < 58) {
-       putchar(c);
-       c = c+1;
-     }
- *)
-let i = While(Binop(Lt, Var "c", Cst 58),
-              [ Putchar(Var "c");
-                Set("c", Binop(Add, Var "x", Cst 1)) ]
-          )
-
-
 
 let array_write t i e =
   Write(array_offset t i, e)
@@ -90,23 +73,6 @@ type function_def = {
     (* The actual code *)
     code: sequence;
   }
-(**
-   A function:
-     function digits(start) {
-       var c;
-       c = start + 48;
-       while (c < 58) {
-         putchar(c);
-         c = c+1;
-       }
-     }
- *)
-let f = {
-    name = "digits";
-    params = ["start"];
-    locals = ["c"];
-    code = [ Set("c", Binop(Add, Var "start", Cst 48)); i ]
-  }
 
 (**
    Data structure for a program
@@ -116,31 +82,4 @@ type program = {
     globals: string list;
     (* The functions defined by the program *)
     functions: function_def list;
-  }
-(**
-   A programme:
-     var zero;
-
-     function main() {
-       zero = 0;
-       digit(zero);
-     }
-
-     function digits(start) {
-       var c;
-       c = start + 48;
-       while (c < 58) {
-         putchar(c);
-         c = c+1;
-       }
-     }
- *)
-let p = {
-    globals = ["zero"];
-    functions = [ f;
-                  { name = "main";
-                    params = [];
-                    locals = [];
-                    code = [ Set("zero", Cst 0);
-                             Expr(Call("digits", [Var "zero"])) ] } ]
   }

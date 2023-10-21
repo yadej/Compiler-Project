@@ -48,6 +48,7 @@ let pop  reg =
 | DCall(e, l) -> DCall(simplify_expr e, List.map simplify_expr l)
 | Alloc e -> Alloc(simplify_expr e)
 | Deref e -> Deref(simplify_expr e)
+| Addr s -> Addr s
 
 
 let tr_function fdef =
@@ -82,7 +83,17 @@ let tr_function fdef =
            read at the corresponding address. *)
         | None -> la (regis i) id @@ lw (regis i) 0 (regis i)
       end
-               
+   | Addr(id) -> begin
+      match Hashtbl.find_opt env id with
+      | Some offset ->
+        (* Variable is a local variable. Calculate its memory address
+           relative to the base pointer ($fp) and load it into the register. *)
+        lw (regis i) offset fp
+      | None ->
+        (* Variable is a global variable. Load its address directly. *)
+        la (regis i) id 
+      end
+    
     (* Binary operation: use the stack to store intermediate values waiting
        to be used. *)
     | Binop(bop, e1, e2) ->
@@ -128,9 +139,9 @@ let tr_function fdef =
            (fun e code ->code @@ tr_expr i e @@ push (regis i))
            params nop
        in
-       params_code (* STEP 1 *)
+       save_registers
+       @@ params_code (* STEP 1 *)
        (* optionnally: save caller-saved registers *)
-       @@ save_registers
        @@ jal f
        @@ restore_registers
        @@ addi sp sp (4 * List.length params) 
@@ -139,14 +150,14 @@ let tr_function fdef =
          List.fold_left
            (fun code i -> push (regis i) @@ code)
            nop
-           (List.init ((List.length params) - 1) (fun x -> x))
+           (List.init ((List.length params)) (fun x -> x))
        in
        (* Restauration des registres t0-t7 depuis la pile après l'appel de fonction *)
        let restore_registers =
          List.fold_left
            (fun code i -> pop (regis i) @@ code)
            nop
-           (List.init ((List.length params) - 1) (fun x -> x))
+           (List.init ((List.length params)) (fun x -> x))
        in
        (* Evaluate the arguments and pass them on the stack. *)
        let params_code =
@@ -154,10 +165,10 @@ let tr_function fdef =
            (fun e code ->code @@ tr_expr i e @@ push (regis i))
            params nop
        in
-       params_code (* STEP 1 *)
-       (* optionnally: save caller-saved registers *)
-       @@ save_registers
+       params_code
        @@ tr_expr i e
+       @@ save_registers
+       @@ jalr (regis i)
        @@ restore_registers
        @@ addi sp sp (4 * List.length params) 
     | Deref e ->
@@ -291,6 +302,7 @@ let tr_function fdef =
        @@ tr_expr (simplify_expr e2)  (* t0: value to be written *)
        @@ pop t1
        @@ sw t0 0(t1)
+   | Seq (l) -> tr_seq l
 
             
   in

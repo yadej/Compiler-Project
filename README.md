@@ -1,3 +1,3 @@
 # Compiler Project
 
-1) Problem Asimp -> Struct and Array have some problem
+1) Fait la partie objlng error au niveau du dynamic call mais je sais pas où
