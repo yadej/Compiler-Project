@@ -145,18 +145,7 @@ let tr_function fdef =
        @@ restore_registers
        @@ addi sp sp (4 * List.length params) 
     | DCall(e, params) ->
-      let save_registers =
-         List.fold_left
-           (fun code i -> push (regis i) @@ code)
-           nop
-           (List.init ((List.length params - 1)) (fun x -> x))
-       in
-       let restore_registers =
-         List.fold_left
-           (fun code i -> pop (regis i) @@ code)
-           nop
-           (List.init ((List.length params - 1)) (fun x -> x))
-       in
+       (* J'enleve les caller/restore car pour une raison inconnu cela marche correctement*)
        (* Evaluate the arguments and pass them on the stack. *)
        let params_code =
          List.fold_right
@@ -165,9 +154,7 @@ let tr_function fdef =
        in
        tr_expr (i+1) e
        @@ params_code
-       @@ save_registers
        @@ jalr (regis (i+1))
-       @@ restore_registers
        @@ addi sp sp (4 * List.length params) 
     | Deref e ->
        tr_expr i e  (* pointer in t0 *)
