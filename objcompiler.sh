@@ -6,6 +6,5 @@ cd ..
 ./Objlng/AnnotParser/objlngc.exe tests/test.obj
 
 cd Objlng/AnnotParser
-dune clean
 cd ..
 cd ..

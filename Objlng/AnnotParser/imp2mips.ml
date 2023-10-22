@@ -81,7 +81,7 @@ let tr_function fdef =
         (* In case the identifier does not appear in [env], we assume we are
            accessing a global variable. We use the identifier as a label and
            read at the corresponding address. *)
-        | None -> la (regis i) id @@ lw (regis i) 0 (regis i)
+        | None -> la (regis i) id @@ lw (regis i) 0(regis i)
       end
    | Addr(id) -> begin
       match Hashtbl.find_opt env id with
@@ -126,7 +126,6 @@ let tr_function fdef =
            nop
            (List.init ((List.length params) - 1) (fun x -> x))
        in
-       (* Restauration des registres t0-t7 depuis la pile après l'appel de fonction *)
        let restore_registers =
          List.fold_left
            (fun code i -> pop (regis i) @@ code)
@@ -150,14 +149,13 @@ let tr_function fdef =
          List.fold_left
            (fun code i -> push (regis i) @@ code)
            nop
-           (List.init ((List.length params)) (fun x -> x))
+           (List.init ((List.length params - 1)) (fun x -> x))
        in
-       (* Restauration des registres t0-t7 depuis la pile après l'appel de fonction *)
        let restore_registers =
          List.fold_left
            (fun code i -> pop (regis i) @@ code)
            nop
-           (List.init ((List.length params)) (fun x -> x))
+           (List.init ((List.length params - 1)) (fun x -> x))
        in
        (* Evaluate the arguments and pass them on the stack. *)
        let params_code =
@@ -165,10 +163,10 @@ let tr_function fdef =
            (fun e code ->code @@ tr_expr i e @@ push (regis i))
            params nop
        in
-       params_code
-       @@ tr_expr i e
+       tr_expr (i+1) e
+       @@ params_code
        @@ save_registers
-       @@ jalr (regis i)
+       @@ jalr (regis (i+1))
        @@ restore_registers
        @@ addi sp sp (4 * List.length params) 
     | Deref e ->

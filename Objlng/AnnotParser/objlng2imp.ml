@@ -44,9 +44,9 @@ let translate_program (p: Objlng.typ Objlng.program) =
         in
         aux s pstr
       in
-      let sum = (List.length s_classes.fields) + (List.length s_classes.methods) in
+      let sum = (List.length s_classes.fields) + 1 in
       Alloc(  Binop(Mul, Cst 4, Cst sum))
-    | This -> Var "This"
+    | This ->  Var "This"
   and tr_mem m = match m with
   | Arr(e1, e2) -> let tr_e1 = tr_expr e1 in
       let tr_e2 = tr_expr e2 in
@@ -65,7 +65,7 @@ let translate_program (p: Objlng.typ Objlng.program) =
         | _ -> failwith "Name not in the struct"
         in
         (** The List.find is to search the correct structure in the program *)
-        aux s str_s.fields 0
+        aux s str_s.fields 1
       in 
      Binop(Add, tr_expr e,  Cst (4 * place)) 
   in
