@@ -7,6 +7,14 @@ let tr_op: Objlng.binop -> Imp.binop = function
 (* main translation function *)
 let translate_program (p: Objlng.typ Objlng.program) =
 
+  let rec all_var_in_class (curr_cla: 'a Objlng.class_def) (pstr: 'a Objlng.class_def list)= (match curr_cla.parent with
+      |Some parent_name -> all_var_in_class(
+        List.find (fun (sta:Objlng.typ Objlng.class_def) -> sta.name = parent_name) pstr
+        ) pstr @ curr_cla.fields
+      | None -> curr_cla.fields
+      )
+  in
+
   (* translation of an expression *)
   let rec tr_expr (te: Objlng.typ Objlng.expression): Imp.expression = match te.expr with
     | Cst n  -> Cst n
@@ -21,15 +29,24 @@ let translate_program (p: Objlng.typ Objlng.program) =
       let place = (match e.annot with
       | TClass c ->
         let c_cla = List.find (fun (x: 'a Objlng.class_def) -> x.name = c) p.classes in
-        let rec f_place (method_list: 'a Objlng.function_def list) counter = (match method_list with
-        | x::l when x.name = f -> counter
-        | x::l -> f_place l (counter + 1)
-        | _  -> Printf.printf "Method %s not in the Classe %s \n " f c; failwith ""
+        let rec f_place (method_list: 'a Objlng.function_def list) counter (f_cla:'a Objlng.class_def) counter2 = 
+          (match method_list with
+        | x::l when x.name = f -> 
+           let rec obj_deref n = ( if n = 1 then Imp.Deref(tr_obj)
+              else Imp.Deref(obj_deref (n-1))
+           )in
+           Imp.Binop(Add, obj_deref counter2, Cst (counter * 4))
+        | x::l -> f_place l (counter + 1) f_cla counter2
+        | _  ->  fc_place f_cla counter2
+        ) and fc_place (f_cla:'a Objlng.class_def) counter = ( match f_cla.parent with
+        | Some s -> let new_cla = List.find (fun (x: 'a Objlng.class_def) -> x.name = s) p.classes in 
+          f_place new_cla.methods 1 new_cla (counter + 1)
+        | None -> Printf.printf "Method %s not in the Classe %s \n " f c; failwith ""
         ) in
-        (f_place c_cla.methods 1) 
+        (f_place c_cla.methods 1 c_cla 1) 
       | _ -> failwith "Method Call when the call is not a class"
         ) in
-      let method_ptr = Imp.Deref(Binop(Add, Deref(tr_obj), Cst (place * 4))) in
+      let method_ptr = Imp.Deref(place) in
       (* Create the dynamic method call expression in the IMP abstract syntax *)
       DCall(method_ptr, tr_obj :: tr_params)
     | Read m -> Deref(tr_mem m)
@@ -44,7 +61,7 @@ let translate_program (p: Objlng.typ Objlng.program) =
         in
         aux s pstr
       in
-      let sum = (List.length s_classes.fields) + 1 in
+      let sum = (List.length (all_var_in_class s_classes pstr)) + 1 in
       Alloc(  Binop(Mul, Cst 4, Cst sum))
     | This ->  Var "This"
   and tr_mem m = match m with
@@ -65,7 +82,7 @@ let translate_program (p: Objlng.typ Objlng.program) =
         | _ -> failwith "Name not in the struct"
         in
         (** The List.find is to search the correct structure in the program *)
-        aux s str_s.fields 1
+        aux s (all_var_in_class str_s pstr) 1
       in 
      Binop(Add, tr_expr e,  Cst (4 * place)) 
   in
@@ -96,9 +113,13 @@ let translate_program (p: Objlng.typ Objlng.program) =
         (Imp.Write(Binop(Add, Var class_name, Cst acc), Addr (fcla.name^"_"^x.name)))::(get_addr_fun l (acc + 4))
       | _ -> []
     in
+    let parent_name (fc: string option) = match fc with
+    | Some s -> Imp.Var (s^"_descr")
+    | None -> Cst 0
+    in
     Imp.Seq([
       Imp.Set(class_name, Alloc(Cst ((List.length fcla.methods + 1) * 4)));
-      Imp.Write(Var class_name, Cst 0);
+      Imp.Write(Var class_name,parent_name fcla.parent);
     ] @ get_addr_fun fcla.methods 4)
   in
 
