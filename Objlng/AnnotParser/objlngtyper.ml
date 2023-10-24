@@ -93,6 +93,10 @@ let type_program (p: unit program): typ program =
         | Some s -> mk_expr (TClass s) This
         | None -> failwith "Should be in a class"
         )
+      | Super ->( match curr_class with
+      | Some s -> mk_expr (TClass s) Super
+      | None -> failwith "Should be in a class"
+      )
     and type_mem m = match m with
     | Arr(e1, e2) ->  let typ_e1 = type_expr e1 in
         let typ_e2 = type_expr e2 in
