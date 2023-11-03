@@ -1,0 +1,13 @@
+
+
+function sum(x, y) {
+  
+  return((x + y));
+}
+
+function main() {
+  
+  putchar( sum(2 , 1));
+}
+
+

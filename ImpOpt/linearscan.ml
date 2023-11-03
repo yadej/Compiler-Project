@@ -12,7 +12,12 @@ let sort_intervals l =
 (* insert interval [i] in active list [l] 
    pre/post-condition: sorted by ascending upper bound *)
 let rec insert_active i l =
-  failwith "not implemented"
+  match l with
+  | [] -> [i]
+  | hd::tl -> let (_, _, upp1) = i in
+              let (_, _, upp2) = hd in
+              if upp1 < upp2 then i::l
+              else hd::insert_active i tl
 
 (* raw allocation information for a variable *)
 type raw_alloc =
@@ -32,17 +37,46 @@ let lscan_alloc nb_regs fdef =
   let spill_count = ref 0 in (* number of spilled variables *)
   (* free registers allocated to intervals that stop before timestamp a,
      returns remaining intervals *)
-  let rec expire a l =
-    failwith "not implemented"
+  let rec expire a l = match l with
+    | [] -> []
+    | interval :: rest -> let (vars, reg , upp) = interval in
+      if upp < a then
+        let () =  match reg with
+        | RegN n -> free := List.sort (fun x  y-> x - y) (n::!free)
+        | Spill n -> ()
+        in
+        expire a rest
+      else
+      interval :: expire a rest
   in
   (* for each interval i, in sorted order *)
-  List.iter (fun i ->
-      let xi, li, hi = i in
+  List.iter (fun interval ->
+      let xi, li, hi = interval in
       (* free registers that expire before the lower bound of i *)
+      let still_active = expire li !active in
       (* if there are available registers *)
+      match !free with
         (* ... then allocate one *)
+      | reg::rest -> 
+        active := insert_active (xi, RegN(reg), hi) !active;
+        r_max := max !r_max reg;
+        Hashtbl.add alloc xi (RegN(reg));
+        free := rest;
         (* otherwise, may replace an already used register if this can
            make this register available again earlier *)
-      failwith "not implemented"
+      | [] -> ( match still_active with
+          | (xi2, _ , hi2)::_  when hi2 > hi -> 
+            let reg = match List.find_opt (fun (_, r, _) -> r <> Spill(0)) still_active with
+            | Some (_, r, _) -> (match r with RegN(reg) -> reg | _ -> failwith "Invalid register")
+            | None -> failwith "No available register"
+            in
+            Hashtbl.add alloc xi2 (RegN(reg));
+            Hashtbl.add alloc xi (Spill(!spill_count));
+            active := (xi, RegN(reg), hi) :: List.filter (fun (_, _, upp) -> upp > hi) still_active;
+            spill_count := !spill_count + 1;
+          | _ ->
+          Hashtbl.add alloc xi (Spill(!spill_count));
+          spill_count := !spill_count + 1;
+      )
     ) (sort_intervals live_intervals);
   alloc, !r_max, !spill_count

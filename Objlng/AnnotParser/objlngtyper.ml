@@ -94,7 +94,10 @@ let type_program (p: unit program): typ program =
         | None -> failwith "Should be in a class"
         )
       | Super ->( match curr_class with
-      | Some s -> mk_expr (TClass s) Super
+      | Some s -> let k = (match (List.find (fun (x: unit class_def) -> x.name =s) p.classes).parent with
+                          | Some p -> p |None -> failwith "Should be in a class"
+      ) in
+         mk_expr (TClass k) Super
       | None -> failwith "Should be in a class"
       )
     and type_mem m = match m with
