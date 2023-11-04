@@ -1,12 +1,12 @@
 
 function double(x) {
   
-  return((2 * x));
+  return(2 * x);
 }
 
 function sum(x, y) {
   
-  return((x + y));
+  return(x + y);
 }
 
 function main() {

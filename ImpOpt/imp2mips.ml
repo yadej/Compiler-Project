@@ -41,10 +41,10 @@ let allocate_locals fdef =
     let explicit = 
       match raw with
       | Linearscan.RegN n -> Reg(var_regs.(n))
-      | Linearscan.Spill offset -> Stack(-4 * (offset+1))
+      | Linearscan.Spill offset -> Stack(-4 * (offset+2))
       in
       Hashtbl.add alloc var explicit
-  )  (fdef.locals @fdef.params);
+  )  (fdef.locals @ fdef.params);
   alloc, r_max, spill_count
 
 (* Generate Mips code for an Imp function *)
@@ -70,9 +70,9 @@ let tr_function fdef =
   (* Generate Mips code for an Imp expression. The generated code produces the
      result in register $ti, and do not alter registers $tj with j < i. *)
   let rec tr_expr i e =
+    if i < nb_tmp_regs then
     let ti = 
-      if i < nb_tmp_regs then tmp_regs.(i) 
-      else raise (Error "not enough temporary registers")
+       tmp_regs.(i) 
     in 
     match e with
     | Cst(n)  -> li ti n
@@ -89,7 +89,15 @@ let tr_function fdef =
          | Mul -> mul
          | Lt  -> slt
        in
-       if i+1 >= nb_tmp_regs then raise (Error "not enough temporary registers");
+       if i+1 >= nb_tmp_regs then 
+        let offset1 = -4 * (i - nb_tmp_regs + 1) in
+        let offset2 = -4 * (i - nb_tmp_regs + 2) in
+         save_tmp (i - 1)
+         @@ tr_expr 0 e1 @@ sw t0 offset1(fp)
+         @@ tr_expr 1 e2 @@ lw t0 offset1(fp) @@ sw t0 offset2(fp)
+         @@ op ti ti tmp_regs.(1)
+         @@ restore_tmp (i - 1)
+       else
        tr_expr i e1 @@ tr_expr (i+1) e2 @@ op ti ti tmp_regs.(i+1)
 
     (* Function call.
@@ -101,6 +109,11 @@ let tr_function fdef =
        tr_params i params @@ save_tmp (i-1) 
        @@ jal f 
        @@ restore_tmp (i-1) @@ addi sp sp (4 * List.length fdef.params)
+    else
+      let offset = -4 * (i - nb_tmp_regs + 1) in
+      save_tmp (i - 1)
+      @@ tr_expr 0 e @@ sw t0 offset(fp)
+      @@ restore_tmp (i - 1)
 
   and tr_params i = function
     | []        -> nop
@@ -152,8 +165,8 @@ let tr_function fdef =
     | Return(e) -> tr_expr 0 e @@ addi sp fp (-4) @@ pop ra @@ pop fp @@ jr ra
     | Expr(e) -> tr_expr 0 e
   in
-  let save_code = save var_regs (spill_count) in
-  let restore_code =  restore var_regs (spill_count)  in
+  let save_code = save var_regs (min spill_count (nb_var_regs-1)) in
+  let restore_code =  restore var_regs (min spill_count (nb_var_regs-1) )  in
 
   (* Mips code for the function itself. 
      Initialize the stack frame and save callee-saved registers, run the code of 
@@ -163,7 +176,7 @@ let tr_function fdef =
   (* TODO: replace the following, to save callee-saved registers and allocate 
      the right number of slots on the stack for spilled local variables *)
   @@ save_code
-  @@ addi sp sp (-4 * List.length fdef.locals)
+  @@ addi sp sp (-4 * r_max)
   @@ tr_seq fdef.code
   (* TODO: restore callee-saved registers *)
   @@ restore_code

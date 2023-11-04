@@ -24,6 +24,16 @@ type raw_alloc =
   | RegN  of int  (* index of the register *)
   | Spill of int  (* index of the spill *)
 
+let print_alloc interval =
+  let raw reg = match reg with
+  | RegN n -> Printf.sprintf " Reg %i" n
+  | Spill n -> Printf.sprintf " Spill %i" n
+  in
+  Hashtbl.iter (
+    fun x reg -> Printf.printf "Name %s: %s \n" x (raw reg) 
+  ) interval
+  
+
 (* allocation of the local variables of a function [fdef] using linear scan
    algorithm, with [nb_regs] registers available for allocation ;
    return a raw allocation for each variable, as well as the maximum index of
@@ -66,16 +76,20 @@ let lscan_alloc nb_regs fdef =
            make this register available again earlier *)
       | [] -> ( match still_active with
           | (xi2, _ , hi2)::_  when hi2 > hi -> 
-            let reg = match List.find_opt (fun (_, r, _) -> r <> Spill(0)) still_active with
+            let reg = match List.find_opt (fun (_, r, _) -> (
+              match r with 
+              | Spill _ -> false
+              | RegN _ -> true
+            )) still_active with
             | Some (_, r, _) -> (match r with RegN(reg) -> reg | _ -> failwith "Invalid register")
             | None -> failwith "No available register"
             in
             Hashtbl.add alloc xi2 (RegN(reg));
             Hashtbl.add alloc xi (Spill(!spill_count));
-            active := (xi, RegN(reg), hi) :: List.filter (fun (_, _, upp) -> upp > hi) still_active;
-            spill_count := !spill_count + 1;
+            active := (xi, RegN(reg), hi) :: List.filter (fun (xi, _, _) -> xi <> xi2) !active;
+            active := insert_active (xi2, Spill(!spill_count), hi2) !active;
           | _ ->
-          Hashtbl.add alloc xi (Spill(!spill_count));
+          Hashtbl.replace alloc xi (Spill(!spill_count));
           spill_count := !spill_count + 1;
       )
     ) (sort_intervals live_intervals);
