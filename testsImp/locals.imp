@@ -10,7 +10,7 @@ function double(y) {
 function main() {
   
   x = 3;
-  putchar(((48 + double(1)) + double(x)));
+  putchar((48 + double(1)) + double(x));
 }
 
 

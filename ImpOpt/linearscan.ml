@@ -89,8 +89,8 @@ let lscan_alloc nb_regs fdef =
             active := (xi, RegN(reg), hi) :: List.filter (fun (xi, _, _) -> xi <> xi2) !active;
             active := insert_active (xi2, Spill(!spill_count), hi2) !active;
           | _ ->
-          Hashtbl.replace alloc xi (Spill(!spill_count));
+          Hashtbl.add alloc xi (Spill(!spill_count));
           spill_count := !spill_count + 1;
       )
-    ) (sort_intervals live_intervals);
+    ) (sort_intervals live_intervals); print_alloc alloc;
   alloc, !r_max, !spill_count

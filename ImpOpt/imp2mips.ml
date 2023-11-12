@@ -25,6 +25,30 @@ let rec restore regs k = if k < 0 then nop else    pop regs.(k) @@ restore regs 
 let    save_tmp = save    tmp_regs
 let restore_tmp = restore tmp_regs
 
+let rec simplify_expr = function
+| Cst n -> Cst n
+| Bool b -> Bool b
+| Binop (Add,Cst a,Cst b) -> Cst (a + b)
+| Binop (Mul,Cst a,Cst b) -> Cst (a * b)
+| Binop (Lt,Cst a,Cst b) -> Bool (a < b)
+| Binop (op, a, b) -> 
+    let fun_a = simplify_expr a in
+    let fun_b = simplify_expr b in
+    (
+    match (fun_a,fun_b) with
+    | Cst _,Cst _|Bool _, Bool _ -> simplify_expr (Binop(op, fun_a,  fun_b))
+    | Cst a, Binop(nop ,Cst b, x) | Binop(nop ,Cst b, x) ,Cst a
+    | Cst a, Binop(nop ,x ,Cst b) | Binop(nop ,x ,Cst b) ,Cst a
+    when op = nop && nop != Lt -> 
+      let operator = if op = Add then (fun x y -> x + y)
+      else (fun x y -> x * y)
+     in 
+      Binop(op,Cst (operator a b),simplify_expr x)
+    | _ , _ -> Binop(op, fun_a,  fun_b)
+    )
+| Var x -> Var x
+| Call(s, l) -> Call(s, List.map simplify_expr l)
+
 (* explicit allocation information for a local variable *)
 type explicit_alloc =
   | Reg   of string  (* name of the register *)
@@ -35,17 +59,17 @@ type explicit_alloc =
 let allocate_locals fdef =
   let nfdef = Nimp.from_imp_fdef fdef in
   let raw_alloc, r_max, spill_count = Linearscan.lscan_alloc nb_var_regs nfdef in
-  let alloc = Hashtbl.create 16 in
+  let alloc = Hashtbl.create spill_count in
   List.iter(fun  var -> 
     let raw = Hashtbl.find raw_alloc var in
     let explicit = 
       match raw with
       | Linearscan.RegN n -> Reg(var_regs.(n))
-      | Linearscan.Spill offset -> Stack(-4 * (offset+2))
+      | Linearscan.Spill offset -> Stack(4 * offset + 4)
       in
       Hashtbl.add alloc var explicit
-  )  (fdef.locals @ fdef.params);
-  alloc, r_max, spill_count
+  )  (fdef.params @ fdef.locals); 
+  alloc, r_max
 
 (* Generate Mips code for an Imp function *)
 (* Call frame
@@ -61,7 +85,7 @@ let allocate_locals fdef =
 let tr_function fdef =
   (* Allocation info for local variables and function parameters *)
   (* TODO: replace with an explicit allocation table deduced from [allocate_locals] *)
-  let alloc, r_max, spill_count = allocate_locals fdef in
+  let alloc, r_max = allocate_locals fdef in
   (*let alloc = Hashtbl.create 16 in
   
   List.iteri (fun k id -> Hashtbl.add alloc id (4*(k+1))) fdef.params;
@@ -89,15 +113,6 @@ let tr_function fdef =
          | Mul -> mul
          | Lt  -> slt
        in
-       if i+1 >= nb_tmp_regs then 
-        let offset1 = -4 * (i - nb_tmp_regs + 1) in
-        let offset2 = -4 * (i - nb_tmp_regs + 2) in
-         save_tmp (i - 1)
-         @@ tr_expr 0 e1 @@ sw t0 offset1(fp)
-         @@ tr_expr 1 e2 @@ lw t0 offset1(fp) @@ sw t0 offset2(fp)
-         @@ op ti ti tmp_regs.(1)
-         @@ restore_tmp (i - 1)
-       else
        tr_expr i e1 @@ tr_expr (i+1) e2 @@ op ti ti tmp_regs.(i+1)
 
     (* Function call.
@@ -133,7 +148,7 @@ let tr_function fdef =
     | i::s -> tr_instr i @@ tr_seq s
 
   and tr_instr = function
-    | Putchar(e) -> tr_expr 0 e @@ move a0 t0 @@ li v0 11 @@ syscall
+    | Putchar(e) -> tr_expr 0 (simplify_expr e) @@ move a0 t0 @@ li v0 11 @@ syscall
     | Set(x, e) ->
        (* TODO: replace to take into account explicit allocation info *)
        let set_code = match Hashtbl.find_opt alloc x with
@@ -141,13 +156,13 @@ let tr_function fdef =
          | Some Stack offset -> sw t0 offset(fp)
          | None -> la t1 x @@ sw t0 0(t1)
        in
-       tr_expr 0 e @@ set_code
+       tr_expr 0 (simplify_expr e) @@ set_code
 
     | If(c, s1, s2) ->
        let then_label = new_label()
        and end_label = new_label()
        in
-       tr_expr 0 c @@ bnez t0 then_label
+       tr_expr 0 (simplify_expr c) @@ bnez t0 then_label
        (* fall to else branch *) @@ tr_seq s2 @@ b end_label
        @@ label then_label @@ tr_seq s1 (* fall through *)
        @@ label end_label
@@ -158,15 +173,15 @@ let tr_function fdef =
        in
        b test_label
        @@ label code_label @@ tr_seq s
-       @@ label test_label @@ tr_expr 0 c @@ bnez t0 code_label
+       @@ label test_label @@ tr_expr 0 (simplify_expr c) @@ bnez t0 code_label
        (* fall through *)
 
     (* Return from a call with a value. Includes cleaning the stack. *)
-    | Return(e) -> tr_expr 0 e @@ addi sp fp (-4) @@ pop ra @@ pop fp @@ jr ra
-    | Expr(e) -> tr_expr 0 e
+    | Return(e) -> tr_expr 0 (simplify_expr e) @@ addi sp fp (-4) @@ pop ra @@ pop fp @@ jr ra
+    | Expr(e) -> tr_expr 0 (simplify_expr e)
   in
-  let save_code = save var_regs (min spill_count (nb_var_regs-1)) in
-  let restore_code =  restore var_regs (min spill_count (nb_var_regs-1) )  in
+  let save_code = save var_regs  (nb_var_regs-1) in
+  let restore_code =  restore var_regs (nb_var_regs-1)   in
 
   (* Mips code for the function itself. 
      Initialize the stack frame and save callee-saved registers, run the code of 
@@ -176,7 +191,7 @@ let tr_function fdef =
   (* TODO: replace the following, to save callee-saved registers and allocate 
      the right number of slots on the stack for spilled local variables *)
   @@ save_code
-  @@ addi sp sp (-4 * r_max)
+  @@ addi sp sp (-4 * List.length fdef.locals)
   @@ tr_seq fdef.code
   (* TODO: restore callee-saved registers *)
   @@ restore_code

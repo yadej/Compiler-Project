@@ -79,9 +79,9 @@ let liveness_intervals_from_liveness fdef =
       )
     ) live_set
   ) live;
-  (*List.iter (fun (x, lw, upp) -> 
+  List.iter (fun (x, lw, upp) -> 
     Printf.printf "Var %s with lower bound %i and upper bound %i\n" x lw upp
-    ) !intervals;*)
+    ) !intervals;
   !intervals
 
 
