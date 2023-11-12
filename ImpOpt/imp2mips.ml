@@ -59,13 +59,17 @@ type explicit_alloc =
 let allocate_locals fdef =
   let nfdef = Nimp.from_imp_fdef fdef in
   let raw_alloc, r_max, spill_count = Linearscan.lscan_alloc nb_var_regs nfdef in
-  let alloc = Hashtbl.create spill_count in
+  let alloc = Hashtbl.create 32 in
+  let available_stack_slots = ref (List.init (spill_count + 1) (fun i -> -4 * i)) in
   List.iter(fun  var -> 
     let raw = Hashtbl.find raw_alloc var in
     let explicit = 
       match raw with
       | Linearscan.RegN n -> Reg(var_regs.(n))
-      | Linearscan.Spill offset -> Stack(4 * offset + 4)
+      | Linearscan.Spill _ -> let offset = ( match !available_stack_slots with
+        | [] -> failwith "No available stack slots"
+        | hd::rest -> available_stack_slots := rest; hd
+      ) in Stack(-4 * offset - 4)
       in
       Hashtbl.add alloc var explicit
   )  (fdef.params @ fdef.locals); 
