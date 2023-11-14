@@ -16,6 +16,8 @@ let nb_tmp_regs = Array.length tmp_regs
 let var_regs = [| s0; s1; s2; s3; s4; s5; s6; s7 |]
 let nb_var_regs = Array.length var_regs
 
+let a_regs = [|a0; a1; a2; a3|]
+
 let push reg = subi sp sp 4 @@ sw reg 0(sp)
 let pop  reg = lw reg 0(sp) @@ addi sp sp 4
 
@@ -60,16 +62,12 @@ let allocate_locals fdef =
   let nfdef = Nimp.from_imp_fdef fdef in
   let raw_alloc, r_max, spill_count = Linearscan.lscan_alloc nb_var_regs nfdef in
   let alloc = Hashtbl.create 32 in
-  let available_stack_slots = ref (List.init (spill_count + 1) (fun i -> -4 * i)) in
   List.iter(fun  var -> 
     let raw = Hashtbl.find raw_alloc var in
     let explicit = 
       match raw with
       | Linearscan.RegN n -> Reg(var_regs.(n))
-      | Linearscan.Spill _ -> let offset = ( match !available_stack_slots with
-        | [] -> failwith "No available stack slots"
-        | hd::rest -> available_stack_slots := rest; hd
-      ) in Stack(-4 * offset - 4)
+      | Linearscan.Spill offset ->  Stack(-4 * offset - 4)
       in
       Hashtbl.add alloc var explicit
   )  (fdef.params @ fdef.locals); 
@@ -136,7 +134,10 @@ let tr_function fdef =
 
   and tr_params i = function
     | []        -> nop
-    | e::params -> tr_params i params @@ tr_expr i e @@ push tmp_regs.(i)
+    | e::params when i >= 4 -> 
+      tr_params i params @@ tr_expr i e @@ push tmp_regs.(i)
+    | e::params ->  tr_params (i + 1) params @@ tr_expr i e @@ move a_regs.(i) tmp_regs.(i)
+
 
   in
 
@@ -145,6 +146,7 @@ let tr_function fdef =
     let cpt = ref (-1) in
     fun () -> incr cpt; Printf.sprintf "__%s_%i" fdef.name !cpt
   in
+  
 
   (* Generate MIPS code for an Imp instruction or sequence. *)
   let rec tr_seq = function
@@ -184,6 +186,7 @@ let tr_function fdef =
     | Return(e) -> tr_expr 0 (simplify_expr e) @@ addi sp fp (-4) @@ pop ra @@ pop fp @@ jr ra
     | Expr(e) -> tr_expr 0 (simplify_expr e)
   in
+
   let save_code = save var_regs  (nb_var_regs-1) in
   let restore_code =  restore var_regs (nb_var_regs-1)   in
 
