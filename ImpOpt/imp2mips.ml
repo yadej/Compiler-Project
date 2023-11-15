@@ -126,11 +126,14 @@ let tr_function fdef =
        Jump to the function.
        Finallly restore saved tempary registers and clean the stack. *)
     | Call(f, params) ->
-       tr_params i params @@ save_tmp (i-1) 
-       @@ jal f 
-       @@ restore_tmp (i-1) @@ addi sp sp (4 * List.length fdef.params)
+      let len = List.length fdef.params in
+      tr_params i params @@ save_tmp (i-1)  
+      @@ save_a_reg (min 3 (List.length fdef.params))
+      @@ jal f 
+      @@ restore_a_reg (min 3 (List.length fdef.params))
+      @@ restore_tmp (i-1) @@ addi sp sp (4 * len)
     else
-      let offset = -4 * (i - nb_tmp_regs + 1) in
+      let offset = -4 * (nb_tmp_regs - 1) in
       save_tmp (i - 1)
       @@ tr_expr 0 e @@ sw t0 offset(fp)
       @@ restore_tmp (i - 1)
@@ -140,9 +143,7 @@ let tr_function fdef =
     | e::params when i >= 4 -> 
       tr_params i params @@ tr_expr i e @@ push tmp_regs.(i)
     | e::params -> 
-       push a_regs.(i) 
-       @@ tr_params (i + 1) params @@ tr_expr i e @@ move a_regs.(i) tmp_regs.(i)
-       @@ pop a_regs.(i)
+       tr_params (i + 1) params @@ tr_expr i e @@ push a_regs.(i) @@ move a_regs.(i) tmp_regs.(i)
 
 
   in
