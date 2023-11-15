@@ -64,13 +64,16 @@ type explicit_alloc =
 let allocate_locals fdef =
   let nfdef = Nimp.from_imp_fdef fdef in
   let raw_alloc, r_max, spill_count = Linearscan.lscan_alloc nb_var_regs nfdef in
+  let new_spill_count = ref spill_count in
   let alloc = Hashtbl.create 32 in
   List.iter(fun  var -> 
-    let raw = Hashtbl.find raw_alloc var in
-    let explicit = 
+    let explicit =  try
+      let raw = Hashtbl.find raw_alloc var in
       match raw with
       | Linearscan.RegN n -> Reg(var_regs.(n))
       | Linearscan.Spill offset ->  Stack(-4 * offset - 4)
+      with Not_found -> new_spill_count := !new_spill_count + 1;
+        Stack(-4 * !new_spill_count - 4)
       in
       Hashtbl.add alloc var explicit
   )  (fdef.params @ fdef.locals); 
@@ -194,8 +197,8 @@ let tr_function fdef =
     | Expr(e) -> tr_expr 0 (simplify_expr e)
   in
 
-  let save_code = save var_regs  (nb_var_regs-1) in
-  let restore_code =  restore var_regs (nb_var_regs-1)   in
+  let save_code = save var_regs  (r_max-1) in
+  let restore_code =  restore var_regs (r_max-1)   in
 
   (* Mips code for the function itself. 
      Initialize the stack frame and save callee-saved registers, run the code of 
