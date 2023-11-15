@@ -27,6 +27,9 @@ let rec restore regs k = if k < 0 then nop else    pop regs.(k) @@ restore regs 
 let    save_tmp = save    tmp_regs
 let restore_tmp = restore tmp_regs
 
+let save_a_reg = save a_regs
+let restore_a_reg = restore a_regs
+
 let rec simplify_expr = function
 | Cst n -> Cst n
 | Bool b -> Bool b
@@ -136,7 +139,10 @@ let tr_function fdef =
     | []        -> nop
     | e::params when i >= 4 -> 
       tr_params i params @@ tr_expr i e @@ push tmp_regs.(i)
-    | e::params ->  tr_params (i + 1) params @@ tr_expr i e @@ move a_regs.(i) tmp_regs.(i)
+    | e::params -> 
+       push a_regs.(i) 
+       @@ tr_params (i + 1) params @@ tr_expr i e @@ move a_regs.(i) tmp_regs.(i)
+       @@ pop a_regs.(i)
 
 
   in
